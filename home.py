@@ -13,8 +13,6 @@ from itertools import permutations
 from itertools import combinations
 
 import shap
-import time
-
 
 show_pages_from_config()
 
@@ -47,12 +45,70 @@ def updateLoadState(idx: int, loadModelState: list):
     return True
 
 
+@st.cache_resource(show_spinner=False)
+def loadModelLinear(x_train, y_train, x_test, y_test):
+    model_linear_regression = LinearRegression()
+    model_linear_regression.fit(x_train, y_train)
+    y_pred = model_linear_regression.predict(x_test)
+
+    # score error
+    mse = mean_squared_error(y_test, y_pred)
+    r2 = r2_score(y_test, y_pred)
+
+    return model_linear_regression, mse, r2
+
+
+@st.cache_resource(show_spinner=False)
+def loadModelKNN(x_train, y_train, x_test, y_test):
+    max_iter = len(y_test)
+    k_neighbor_score = []
+
+    for k in range(1, max_iter):
+        knn_model = KNeighborsRegressor(n_neighbors=k)
+        knn_model.fit(x_train, y_train)
+
+        score_knn = knn_model.score(x_test, y_test)
+        k_neighbor_score.append({k: score_knn})
+
+    max_k_neighbor = max(
+        k_neighbor_score, key=lambda x: list(x.values())[0])
+    k_neighbor = list(max_k_neighbor.keys())[0]
+
+    knn_model = KNeighborsRegressor(n_neighbors=k_neighbor)
+    knn_model.fit(x_train, y_train)
+
+    y_pred = knn_model.predict(x_test)
+
+    # Score error
+    mse = mean_squared_error(y_test, y_pred)
+    r2 = r2_score(y_test, y_pred)
+
+    return knn_model, k_neighbor, mse, r2
+
+
+@st.cache_resource(show_spinner=False)
+def loadModelSVR(x_train, y_train, x_test, y_test):
+
+    svr_model = SVR()
+    svr_model.fit(x_train, y_train)
+
+    y_pred = svr_model.predict(x_test)
+    mse = mean_squared_error(y_test, y_pred)
+    r2 = r2_score(y_test, y_pred)
+    return svr_model, mse, r2
+
+
 # LinReg, KNN, SVR
 loadModelState = [False, False, False]
 
 
+@st.cache_data(show_spinner=False)
+def readData(uploaded_file):
+    return pd.read_csv(uploaded_file)
+
+
 if (uploaded_file):
-    data_csv = pd.read_csv(uploaded_file)
+    data_csv = readData(uploaded_file)
     st.session_state["data_csv"] = data_csv
     st.session_state["uploaded_file"] = uploaded_file.name
 
@@ -82,6 +138,8 @@ if (uploaded_file):
               on_click=clicked, args=["confirmTarget"])
 
     if getSession("clicked")["confirmTarget"]:
+        saveSession({"target_feature": sbTarget})
+
         # Begin Initialization
         st.subheader("Data Initialization :red[*]", divider="grey")
 
@@ -128,17 +186,9 @@ if (uploaded_file):
                 st.subheader("Linear Regression", divider='grey')
 
                 with st.spinner('Getting Linear Regression Model Ready, Please Wait...'):
-                    if getSession("model_linear_regression") != False:
-                        model_linear_regression = getSession(
-                            "model_linear_regression")
-                    else:
-                        model_linear_regression = LinearRegression()
-                        model_linear_regression.fit(x_train, y_train)
-                    y_pred = model_linear_regression.predict(x_test)
 
-                    # score error
-                    mse = mean_squared_error(y_test, y_pred)
-                    r2 = r2_score(y_test, y_pred)
+                    model_linear_regression, mse, r2 = loadModelLinear(
+                        x_train, y_train, x_test, y_test)
 
                     # save model
                     saveSession(
@@ -155,33 +205,12 @@ if (uploaded_file):
             with col2:
                 st.subheader("KNN", divider="grey")
                 with st.spinner('Getting KNN Model Ready, Please Wait...'):
-                    if getSession("knn_model") != False:
-                        knn_model = getSession("knn_model")
-                        k_neighbor = getSession("k_neighbor")
-                    else:
-                        max_iter = len(y_test)
-                        k_neighbor_score = []
 
-                        for k in range(1, max_iter):
-                            knn_model = KNeighborsRegressor(n_neighbors=k)
-                            knn_model.fit(x_train, y_train)
-
-                            score_knn = knn_model.score(x_test, y_test)
-                            k_neighbor_score.append({k: score_knn})
-
-                        max_k_neighbor = max(
-                            k_neighbor_score, key=lambda x: list(x.values())[0])
-                        k_neighbor = list(max_k_neighbor.keys())[0]
-
-                    y_pred = knn_model.predict(x_test)
-
-                    # Score error
-                    mse = mean_squared_error(y_test, y_pred)
-                    r2 = r2_score(y_test, y_pred)
+                    knn_model, k_neighbor, mse, r2 = loadModelKNN(
+                        x_train, y_train, x_test, y_test)
 
                     # save model
-                    saveSession({"k_neighbor": k_neighbor,
-                                "model_knn": knn_model})
+                    saveSession({"model_knn": knn_model})
 
                 updateLoadState(1, loadModelState)
 
@@ -194,12 +223,9 @@ if (uploaded_file):
             with col3:
                 st.subheader("SVR", divider="grey")
                 with st.spinner('Getting SVR Model Ready, Please Wait...'):
-                    svr_model = SVR()
-                    svr_model.fit(x_train, y_train)
 
-                    y_pred = svr_model.predict(x_test)
-                    mse = mean_squared_error(y_test, y_pred)
-                    r2 = r2_score(y_test, y_pred)
+                    svr_model, mse, r2 = loadModelSVR(
+                        x_train, y_train, x_test, y_test)
 
                     saveSession({"model_svr": svr_model})
 
