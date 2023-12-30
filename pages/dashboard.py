@@ -1,18 +1,12 @@
 import streamlit as st
-import plotly.express as px
 import pandas as pd
-import time
 import shap
-import warnings
 import matplotlib.pyplot as plt
 
 from utils import saveSession, getSession
 from sklearn.neighbors import KNeighborsRegressor
 from sklearn.linear_model import LinearRegression
 from sklearn.svm import SVR
-
-
-warnings.filterwarnings('ignore')
 
 st.set_page_config(page_title="SHAP Dashboard",
                    page_icon=":bar_chart:", layout="wide")

@@ -3,3 +3,4 @@ pandas
 shap==0.43.0
 scikit-learn
 st-pages==0.4.5
+matplotlib
