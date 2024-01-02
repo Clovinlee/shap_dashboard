@@ -16,6 +16,8 @@ import shap
 
 show_pages_from_config()
 
+st.set_option('deprecation.showPyplotGlobalUse', False)
+
 # warnings.filterwarnings('ignore')
 
 st.title("Home Page")
@@ -27,7 +29,10 @@ st.subheader("Upload Dataset", divider="grey")
 uploaded_file = st.file_uploader("Choose a csv file", type="csv")
 
 if 'clicked' not in st.session_state:
-    st.session_state["clicked"] = {"confirmTarget": False, "initData": False}
+    st.session_state["clicked"] = {"confirmTarget": False, "initData": False,
+                                   "click_generate_instance_tab0": True,
+                                   "click_generate_instance_tab1": True,
+                                   "click_generate_instance_tab2": True}
 
 
 def clicked(button):
@@ -242,6 +247,8 @@ if (uploaded_file):
 if (getSession("confirmInit")):
     st.sidebar.success(
         "Inizialization completed, please select the dashboard page above ")
+    st.sidebar.button("Reset Everything", type="secondary",
+                      key="sidebar_reset", on_click=lambda: st.session_state.clear())
 elif (getSession("confirmProgressInit")):
     st.sidebar.warning("Data Initialization in Progress")
 else:
