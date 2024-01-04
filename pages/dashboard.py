@@ -16,6 +16,8 @@ st.set_option('deprecation.showPyplotGlobalUse', False)
 
 st.title(":bar_chart: SHAP Dashboard")
 
+st.caption("**SHAP Version:**  *{}*".format(shap.__version__))
+
 if getSession("uploaded_file") != False:
     st.caption("**Dataset:** *{}*".format(getSession("uploaded_file")))
 
