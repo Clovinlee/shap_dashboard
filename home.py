@@ -33,6 +33,7 @@ st.markdown("Welcome to the **dashboard**")
 st.subheader("Upload Dataset", divider="grey")
 uploaded_file = st.file_uploader("Choose a csv file", type="csv")
 
+# First Initialization when project run
 if 'clicked' not in st.session_state:
     st.session_state["clicked"] = {"confirmTarget": False, "initData": False, "initModel": False,
                                    "click_generate_instance_tab0": True,
@@ -50,11 +51,13 @@ def clicked(button):
 loadModelState = [False, False, False]
 
 
-def updateLoadState(idx: int, loadModelState: list):
+def updateLoadState(idx: int):
     loadModelState[idx] = True
-    for i in loadModelState:
-        if (not i):
-            return False
+
+    # if there are still FALSE in load data, return false
+    if not all(loadModelState):
+        return False
+
     saveSession({"confirmInit": True, "confirmProgressInit": False})
     return True
 
@@ -180,40 +183,36 @@ if (uploaded_file):
         st.write("")
 
     st.subheader("Feature Selection :red[*]", divider="grey")
-    col1, col2, col3 = st.columns(3)
 
     columnOptions = [data_csv.columns[idx]
                      for idx in range(len(data_csv.columns))]
 
-    with col1:
-        st.caption(
-            "Select target feature to be predicted in the dataset")
-        sbTarget = st.selectbox(
-            'Feature Names', columnOptions, index=len(data_csv.columns)-1, key="target_feature", )
-        st.markdown('Target Feature: ***{}***'.format(sbTarget))
+    with st.form(key="form_feature_selection"):
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            st.caption(
+                "Select target feature to be predicted in the dataset")
+            sbTarget = st.selectbox(
+                'Feature Name', columnOptions, index=len(data_csv.columns)-1, key="target_feature", )
 
-    with col2:
-        st.caption(
-            "Select any category features in the dataset")
-        sbCategories = st.multiselect(
-            'Feature Names', columnOptions, key="category_features")
-        st.markdown(
-            'Category Features: ***{}***'.format(", ".join(sbCategories) if sbCategories else "None"))
+        with col2:
+            st.caption(
+                "Select any category features in the dataset")
+            sbCategories = st.multiselect(
+                'Categories Feature', columnOptions, key="category_features")
 
-    with col3:
-        st.caption(
-            "Select features to be dropped in the dataset")
-        sbDropped = st.multiselect(
-            'Feature Names', columnOptions, key="dropped_features")
-        st.markdown(
-            'Dropped Features: ***{}***'.format(", ".join(sbDropped) if sbDropped else "None"))
+        with col3:
+            st.caption(
+                "Select features to be dropped in the dataset")
+            sbDropped = st.multiselect(
+                'Dropped Features', columnOptions, key="dropped_features")
 
-    # BUTTON PROCEED
-    st.button("Proceed", type="primary",
-              on_click=clicked, args=["confirmTarget"])
+        # BUTTON PROCEED
+        st.form_submit_button("Proceed", type="primary",
+                              on_click=clicked, args=["confirmTarget"])
 
     # ####################  #
-    # DATA INITIALIZATION
+    # DATA INITIALIZATION   #
     # ####################  #
     if getSession("clicked")["confirmTarget"]:
         # saveSession({"target_feature": sbTarget})
@@ -222,45 +221,43 @@ if (uploaded_file):
         # Begin Initialization
         st.subheader("Data Initialization :red[*]", divider="grey")
 
-        col_init1, col_init2, col_init3 = st.columns(3)
+        with st.form(key="form_data_initialization"):
 
-        with col_init1:
-            st.number_input(
-                'Test Size Ration', key="test_size", min_value=0.1, max_value=0.9, value=0.3, step=0.1)
-            st.caption(
-                "Test and Train Size Ratio to be Divided for Train and Testing")
+            col_init1, col_init2, col_init3 = st.columns(3)
 
-            sbSubsampling = st.number_input(
-                'Subsampling', key="num_subsampling", min_value=0, max_value=len(data_csv), value=0, step=1)
-            st.caption(
-                "Subsampling data for faster processing (optional). **Leave at 0 for no subsampling**")
+            with col_init1:
+                st.number_input(
+                    'Test Size Ration', key="test_size", min_value=0.1, max_value=0.9, value=0.3, step=0.1)
+                st.caption(
+                    "Test and Train Size Ratio to be Divided for Train and Testing")
 
-        with col_init2:
-            sbModeBackground = st.selectbox(
-                'Select background dataset mode', ('K Sample', 'K Means'), key="background_mode")
-            st.caption(
-                ":red[**WARNING!**] *KMeans* only work with numerical data only!")
+                sbSubsampling = st.number_input(
+                    'Subsampling', key="num_subsampling", min_value=0, max_value=len(data_csv), value=0, step=1)
+                st.caption(
+                    "Subsampling data for faster processing (optional). **Leave at 0 for no subsampling**")
 
-            st.number_input(
-                'K Value', key="k_value", min_value=1, value=2, step=1)
-            st.caption(
-                "Used for getting K data for SHAP Background Dataset using selected method")
+            with col_init2:
+                sbModeBackground = st.selectbox(
+                    'Select background dataset mode', ('K Sample', 'K Means'), key="background_mode")
+                st.caption(
+                    ":red[**WARNING!**] *KMeans* only work with numerical data only!")
 
-        with col_init3:
-            st.number_input(
-                'Random State', key='random_state', min_value=0, max_value=100, value=42, step=1)
-            st.caption("State of Randomness for Reproducibility")
+                st.number_input(
+                    'K Value', key="k_value", min_value=1, value=2, step=1)
+                st.caption(
+                    "Used for getting K data for SHAP Background Dataset using selected method")
+
+            with col_init3:
+                st.number_input(
+                    'Random State', key='random_state', min_value=0, max_value=100, value=42, step=1)
+                st.caption("State of Randomness for Reproducibility")
+
+            st.form_submit_button(
+                "Proceed", type="primary", on_click=clicked, args=["initData"])
 
         if (sbCategories != [] and sbModeBackground == "K Means"):
             st.caption(
-                ":red[**There are category feature present. Background dataset mode need to be set to K sample**]")
-        col1, col2 = st.columns([1, 6])
-        with col1:
-            if (not (sbCategories != [] and sbModeBackground == "K Means")):
-                st.button(
-                    "Proceed", type="primary", on_click=clicked, args=["initData"], key="initData")
-        with col2:
-            st.button("Reset", on_click=lambda: st.session_state.clear())
+                ":red[**There are category feature present. Background dataset mode need to be set to K sample!**]")
 
         # #################### #
         # MODEL INITIALIZATION
@@ -268,65 +265,63 @@ if (uploaded_file):
 
     if getSession("clicked")["initData"]:
         st.subheader("Model Initialization :red[*]", divider="grey")
-        col1, col2, col3 = st.columns(3)
 
-        with col1:
-            st.write("#### Linear Regression")
-            linreg_fit_intercept = st.checkbox(
-                "Fit Intercept", value=True, key="linreg_fit_intercept")
-            st.caption(
-                "Whether to calculate the intercept for this model.")
+        with st.form(key="form_model_initialization"):
+            col1, col2, col3 = st.columns(3)
 
-        with col2:
-            st.write("#### KNN")
-            knn_auto_n = False
-            knn_inp_k = st.number_input(
-                'K Neighbor', key="knn_inp_k", min_value=2, value=5)
-            st.caption("*or*")
-            knn_auto_n = knn_auto_n = st.checkbox(
-                "Auto K", value=True, key="knn_auto_n")
-            st.caption(
-                "Automatically find the most optimal N for KNN model using KNN Regressor")
+            with col1:
+                st.write("#### Linear Regression")
+                linreg_fit_intercept = st.checkbox(
+                    "Fit Intercept", value=True, key="linreg_fit_intercept")
+                st.caption(
+                    "Whether to calculate the intercept for this model.")
 
-        with col3:
-            rf_max_features_option = ["None", "sqrt", "log2"]
-            st.write("#### Random Forest")
-            rf_max_feature = st.selectbox("Max Features", rf_max_features_option,
-                                          key="rf_max_features_option", index=1)
-            st.caption(
-                "The number of features to consider when looking for best split")
+            with col2:
+                st.write("#### KNN")
+                knn_auto_n = False
+                knn_inp_k = st.number_input(
+                    'K Neighbor', key="knn_inp_k", min_value=2, value=5)
+                st.caption("*or*")
+                knn_auto_n = knn_auto_n = st.checkbox(
+                    "Auto K", value=True, key="knn_auto_n")
+                st.caption(
+                    "Automatically find the most optimal N for KNN model using KNN Regressor")
 
-            rf_n_estimator = st.number_input(
-                'Number of Estimators', key="rf_n_estimators", min_value=10, value=100)
-            st.caption("The number of trees in the forest")
+            with col3:
+                rf_max_features_option = ["None", "sqrt", "log2"]
+                st.write("#### Random Forest")
+                rf_max_feature = st.selectbox("Max Features", rf_max_features_option,
+                                              key="rf_max_features_option", index=1)
+                st.caption(
+                    "The number of features to consider when looking for best split")
 
-        st.subheader("", divider='grey')
+                rf_n_estimator = st.number_input(
+                    'Number of Estimators', key="rf_n_estimators", min_value=10, value=100)
+                st.caption("The number of trees in the forest")
 
-        col1, col2, col3 = st.columns(3)
-        with col1:
-            linreg_standard_scaler = st.checkbox(
-                "Standard Scaler", value=False, key="linreg_standard_scaler")
-            st.caption(
-                "Whether to train the model with standard scaled **x.**")
-        with col2:
-            knn_standard_scaler = st.checkbox(
-                "Standard Scaler", value=False, key="knn_standard_scaler")
-            st.caption(
-                "Whether to train the model with standard scaled **x.**")
-        with col3:
-            rf_standard_scaler = st.checkbox(
-                "Standard Scaler", value=False, key="rf_standard_scaler")
-            st.caption(
-                "Whether to train the model with standard scaled **x.**")
+            st.subheader("", divider='grey')
 
-        col1, col2, a, b = st.columns(4)
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                linreg_standard_scaler = st.checkbox(
+                    "Standard Scaler", value=False, key="linreg_standard_scaler")
+                st.caption(
+                    "Whether to train linear regression with standard scaled **x.**")
+            with col2:
+                knn_standard_scaler = st.checkbox(
+                    "Standard Scaler", value=False, key="knn_standard_scaler")
+                st.caption(
+                    "Whether to train KNN with standard scaled **x.**")
+            with col3:
+                rf_standard_scaler = st.checkbox(
+                    "Standard Scaler", value=False, key="rf_standard_scaler")
+                st.caption(
+                    "Whether to train random forest regressor with standard scaled **x.**")
 
-        with col1:
-            st.button(
-                "Begin Initialization", type="primary", on_click=clicked, args=["initModel"], key="initModel")
-        with col2:
-            st.button("Reset", on_click=lambda: st.session_state.clear(
-            ), key="resetModelInitialization")
+            col1, col2, a, b = st.columns(4)
+
+            st.form_submit_button(
+                "Begin Initialization", type="primary", on_click=clicked, args=["initModel"])
 
     if getSession("clicked")["initModel"]:
         with st.spinner('Initializing the Data, please wait...'):
@@ -347,18 +342,25 @@ if (uploaded_file):
 
             # subsampling the dataset
             if (num_subsampling != 0):
-                data_csv = shap.sample(data_csv, num_subsampling)
+                data_csv = shap.sample(
+                    data_csv, num_subsampling, random_state=random_state)
+
+            # convert into category column type
+            for col in category_features:
+                data_csv[col] = data_csv[col].astype('category')
 
             # get x, y(target)
             x = data_csv.drop(sbTarget, axis=1)
             y = data_csv[sbTarget]
 
-            numeric_features = list(set(x.columns) - set(category_features))
-            saveSession({"numeric_features": numeric_features})
+            numeric_features = [
+                col for col in x.columns if col not in category_features]
 
-            # convert into category column type
-            for col in category_features:
-                data_csv[col] = data_csv[col].astype('category')
+            saveSession({"numeric_features": numeric_features,
+                        "data_csv": data_csv, })
+
+            # makes the first column to be category column, then rest for numeric
+            x = pd.concat([x[category_features], x[numeric_features]], axis=1)
 
             # train test split
             x_train, x_test, y_train, y_test = train_test_split(
@@ -376,10 +378,6 @@ if (uploaded_file):
 
             x_train_numeric = x_train[numeric_features]
             x_test_numeric = x_test[numeric_features]
-
-            # makes the first column to be category column, then rest for numeric
-            x_train = pd.concat([x_train_category, x_train_numeric], axis=1)
-            x_test = pd.concat([x_test_category, x_test_numeric], axis=1)
 
             models_standard_scaler = [
                 linreg_standard_scaler, knn_standard_scaler, rf_standard_scaler]
@@ -411,13 +409,15 @@ if (uploaded_file):
                 # saves into session
                 saveSession({"x_train_scaled": x_train_scaled,
                             "x_test_scaled": x_train_scaled, "x_scaled": x_scaled,
-                             "scaler": scaler})
+                             "scaler": scaler,
+                             'x_data_scaled': x_scaled,
+                             })
 
             # calculate background datasets
             background_datasets = []
             for scaled in models_standard_scaler:
-                if scaled:
-                    background_datasets.append(shap.kmeans(x, k_value))
+                if category_features == []:
+                    background_datasets.append(shap.kmeans(x, k_value).data)
                 else:
                     background_datasets.append(shap.sample(x, k_value))
 
@@ -425,6 +425,7 @@ if (uploaded_file):
             saveSession({"x_train": x_train, "x_test": x_test,
                         "y_train": y_train, "y_test": y_test,
                          "background_datasets": background_datasets,
+                         "x_data": x, "y_data": y,
                          "models_standard_scaler": models_standard_scaler, })
 
         col1, col2, col3 = st.columns(3)
@@ -446,7 +447,7 @@ if (uploaded_file):
                 saveSession(
                     {"pipeline_linear_regression": pipeline_linear_regression})
 
-            updateLoadState(0, loadModelState)
+            updateLoadState(0)
 
             with st.expander("Show Model Information"):
                 st.markdown("**MAE :** *{:.3f}*".format(mae))
@@ -479,7 +480,7 @@ if (uploaded_file):
                 saveSession(
                     {"pipeline_knn": pipeline_knn})
 
-            updateLoadState(1, loadModelState)
+            updateLoadState(1)
 
             with st.expander("Show Model Information"):
                 st.markdown("**Best K :** *{}*".format(k_neighbor))
@@ -498,7 +499,7 @@ if (uploaded_file):
                 rf_x_test = x_test_scaled if rf_standard_scaler else x_test
 
                 pipeline_rf = loadModel(
-                    RandomForestRegressor(max_features=None if rf_max_feature is "None" else rf_max_feature, n_estimators=rf_n_estimator), rf_x_train, y_train, category_features)
+                    RandomForestRegressor(max_features=None if rf_max_feature == "None" else rf_max_feature, n_estimators=rf_n_estimator, random_state=random_state), rf_x_train, y_train, category_features)
 
                 mae, mse, r2, plot_rf = testModel(
                     rf_x_test, y_test, pipeline_rf)
@@ -507,7 +508,7 @@ if (uploaded_file):
                 saveSession(
                     {"pipeline_rf": pipeline_rf})
 
-            updateLoadState(2, loadModelState)
+            updateLoadState(2)
 
             with st.expander("Show Model Information"):
                 st.markdown("**MAE :** *{:.3f}*".format(mae))
@@ -518,14 +519,18 @@ if (uploaded_file):
                 "*Random Forest Model Initialization Complete*")
 
 
-# sidebar
+def resetEverything():
+    st.cache_data.clear()
+    st.session_state.clear()
+
+
 if (getSession("confirmInit")):
     st.sidebar.success(
         "Inizialization completed, please select the dashboard page above ")
-    st.sidebar.button("Reset Everything", type="secondary",
-                      key="sidebar_reset", on_click=lambda: st.session_state.clear())
-elif (getSession("confirmProgressInit")):
+elif getSession("confirmProgressInit"):
     st.sidebar.warning("Initialization in progress please wait")
 else:
     st.sidebar.error("Please begin the initialization first")
-# sidebar end
+
+st.sidebar.button("Reset Everything", type="secondary",
+                  key="sidebar_reset", on_click=resetEverything)
