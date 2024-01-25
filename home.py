@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import seaborn as sns
+import numpy as np
 
 from utils import saveSession, getSession
 from sklearn.model_selection import train_test_split
@@ -11,7 +12,7 @@ from sklearn.linear_model import LinearRegression
 from sklearn.svm import SVR
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.pipeline import Pipeline
-from sklearn.preprocessing import StandardScaler, OneHotEncoder
+from sklearn.preprocessing import StandardScaler, OneHotEncoder, FunctionTransformer
 from sklearn.compose import ColumnTransformer
 from sklearn.metrics import mean_squared_error, r2_score, mean_absolute_error, mean_absolute_percentage_error
 from itertools import permutations, combinations
@@ -31,11 +32,12 @@ st.title("Home Page")
 st.markdown("Welcome to the **dashboard**")
 
 st.subheader("Upload Dataset", divider="grey")
-uploaded_file = st.file_uploader("Choose a csv file", type="csv")
+uploaded_file = st.file_uploader(
+    "Choose a csv file", type="csv", on_change=lambda: st.session_state.clear())
 
 # First Initialization when project run
 if 'clicked' not in st.session_state:
-    st.session_state["clicked"] = {"confirmTarget": False, "initData": False, "initModel": False,
+    st.session_state["clicked"] = {"confirmTarget": False, "initData": False, "initModel": False, "confirmDropped": False,
                                    "click_generate_instance_tab0": True,
                                    "click_generate_instance_tab1": True,
                                    "click_generate_instance_tab2": True}
@@ -62,27 +64,45 @@ def updateLoadState(idx: int):
     return True
 
 
-def loadModel(_model, x_train, y_train, category_columns):
+@st.cache_resource(show_spinner=False)
+def loadModel(_model, x_train, y_train, category_columns, x_columns, modelName):
+
+    # boolean_columns = x_train.columns[x_train.dtypes == 'bool'].tolist()
+
     x_train = x_train.values
-    _model.fit(x_train, y_train)
 
-    indices_category_columns = [x_train.columns.get_loc(
-        category) for category in category_columns]
+    # convert into category column type
+    # for col in category_columns:
+    #     data_csv[col] = data_csv[col].astype('category')
 
-    preprocessor = ColumnTransformer(
-        transformers=[('cat', OneHotEncoder(), indices_category_columns)],
-        remainder='passthrough'
-    )
+    indices_category_columns = np.where(
+        np.isin(x_columns, category_columns))[0]
 
-    pipeline = Pipeline(
-        steps=[('preprocessor', preprocessor), ('model', _model)])
+    # indices_boolean_columns = np.where(np.isin(x_columns, boolean_columns))[0]
+
+    pipeline = getPipeline(_model, indices_category_columns)
 
     pipeline.fit(x_train, y_train)
 
     return pipeline
 
 
+def getPipeline(_model, indices_category_columns):
+    preprocessor = ColumnTransformer(
+        transformers=[
+            ('cat', OneHotEncoder(), indices_category_columns),
+        ],
+        remainder='passthrough'
+    )
+
+    pipeline = Pipeline(
+        steps=[('preprocessor', preprocessor), ('model', _model)])
+
+    return pipeline
+
+
 def testModel(x_test, y_test, pipeline):
+    x_test = x_test.values
     y_pred = pipeline.predict(x_test)
 
     mse = mean_squared_error(y_test, y_pred)
@@ -109,26 +129,21 @@ def testModel(x_test, y_test, pipeline):
     return mae, mse, r2, plt.gcf()
 
 
-def getKNN_k(x_train, y_train, x_test, y_test, min_iter=2, max_iter=15):
+def getKNN_k(x_train, y_train, x_test, y_test, x_columns, category_columns, min_iter=2, max_iter=15):
 
     k_neighbor_score = []
 
     for k in range(min_iter, max_iter):
-        # Default uses EUCLIDEAN DISTANCE
         knn_model = KNeighborsRegressor(n_neighbors=k)
 
-        # Train the model
-        # pipeline = trainModelPipeline(x_train, y_train, knn_model)
-        knn_model.fit(x_train, y_train)
+        pipeline = loadModel(knn_model, x_train, y_train,
+                             category_columns, x_columns, modelName="KNN"+str(k))
 
-        # scoring uses r^2 score
-        # r^2 commonly used in regression
-        # whilst f1 used in classification
-        score_knn = knn_model.score(x_test, y_test)
+        score_knn = pipeline.score(x_test.values, y_test)
         k_neighbor_score.append({k: score_knn})
 
-    max_k_neighbor = max(k_neighbor_score, key=lambda x: list(x.values())[0])
-    k_neighbor = list(max_k_neighbor.keys())[0]
+    max_dict = max(k_neighbor_score, key=lambda x: list(x.values())[0])
+    k_neighbor = list(max_dict.keys())[0]
 
     return k_neighbor, k_neighbor_score
 
@@ -184,32 +199,43 @@ if (uploaded_file):
 
     st.subheader("Feature Selection :red[*]", divider="grey")
 
-    columnOptions = [data_csv.columns[idx]
-                     for idx in range(len(data_csv.columns))]
+    sbDropped = []
+    dataColumns = [data_csv.columns[idx]
+                   for idx in range(len(data_csv.columns))]
 
-    with st.form(key="form_feature_selection"):
-        col1, col2, col3 = st.columns(3)
-        with col1:
-            st.caption(
-                "Select target feature to be predicted in the dataset")
-            sbTarget = st.selectbox(
-                'Feature Name', columnOptions, index=len(data_csv.columns)-1, key="target_feature", )
-
-        with col2:
-            st.caption(
-                "Select any category features in the dataset")
-            sbCategories = st.multiselect(
-                'Categories Feature', columnOptions, key="category_features")
-
-        with col3:
-            st.caption(
-                "Select features to be dropped in the dataset")
-            sbDropped = st.multiselect(
-                'Dropped Features', columnOptions, key="dropped_features")
-
-        # BUTTON PROCEED
+    with st.form("form_dropped_features"):
+        st.caption(
+            "Select features to be dropped in the dataset")
+        sbDropped = st.multiselect(
+            'Dropped Features', dataColumns, key="dropped_features")
         st.form_submit_button("Proceed", type="primary",
-                              on_click=clicked, args=["confirmTarget"])
+                              on_click=clicked, args=["confirmDropped"])
+    if (len(sbDropped) > len(dataColumns)-2):
+        st.caption(
+            ":red[**WARNING!**] *At least 2 or more feature should be in the data!*")
+
+    if getSession("clicked")["confirmDropped"] and len(sbDropped) <= len(dataColumns)-2:
+        columnOptions = [
+            col for col in data_csv.columns if col not in sbDropped]
+
+        with st.form(key="form_feature_selection"):
+            col1, col2 = st.columns(2)
+            with col1:
+                st.caption(
+                    "Select target feature to be predicted in the dataset")
+
+                sbTarget = st.selectbox(
+                    'Feature Name', columnOptions, index=len(columnOptions)-1, key="target_feature", )
+
+            with col2:
+                st.caption(
+                    "Select all category features in the dataset")
+                sbCategories = st.multiselect(
+                    'Categories Feature', columnOptions, key="category_features")
+
+            # BUTTON PROCEED
+            st.form_submit_button("Proceed", type="primary",
+                                  on_click=clicked, args=["confirmTarget"])
 
     # ####################  #
     # DATA INITIALIZATION   #
@@ -231,8 +257,12 @@ if (uploaded_file):
                 st.caption(
                     "Test and Train Size Ratio to be Divided for Train and Testing")
 
+                default_subsampling_value = 0
+                if (len(data_csv) > 10000):
+                    default_subsampling_value = 8000
+
                 sbSubsampling = st.number_input(
-                    'Subsampling', key="num_subsampling", min_value=0, max_value=len(data_csv), value=0, step=1)
+                    'Subsampling', key="num_subsampling", min_value=0, max_value=len(data_csv), value=default_subsampling_value, step=1)
                 st.caption(
                     "Subsampling data for faster processing (optional). **Leave at 0 for no subsampling**")
 
@@ -344,9 +374,13 @@ if (uploaded_file):
             if (num_subsampling != 0):
                 data_csv = shap.sample(
                     data_csv, num_subsampling, random_state=random_state)
+                data_csv.reset_index(drop=True, inplace=True)
 
             # convert into category column type
             for col in category_features:
+                mapping_dict = {
+                    value: idx+1 for idx, value in enumerate(data_csv[col].squeeze().unique())}
+                data_csv[col] = data_csv[col].map(mapping_dict)
                 data_csv[col] = data_csv[col].astype('category')
 
             # get x, y(target)
@@ -408,18 +442,21 @@ if (uploaded_file):
 
                 # saves into session
                 saveSession({"x_train_scaled": x_train_scaled,
-                            "x_test_scaled": x_train_scaled, "x_scaled": x_scaled,
+                            "x_test_scaled": x_test_scaled, "x_scaled": x_scaled,
                              "scaler": scaler,
                              'x_data_scaled': x_scaled,
                              })
 
             # calculate background datasets
             background_datasets = []
-            for scaled in models_standard_scaler:
+            for idx, scaled in enumerate(models_standard_scaler):
+                x_background = x_scaled if scaled else x
                 if category_features == []:
-                    background_datasets.append(shap.kmeans(x, k_value).data)
+                    background_datasets.append(
+                        shap.kmeans(x_background, k_value).data)
                 else:
-                    background_datasets.append(shap.sample(x, k_value))
+                    background_datasets.append(
+                        shap.sample(x_background, k_value, random_state=random_state))
 
             # saves into session
             saveSession({"x_train": x_train, "x_test": x_test,
@@ -438,7 +475,7 @@ if (uploaded_file):
                 linreg_x_test = x_test_scaled if linreg_standard_scaler else x_test
 
                 pipeline_linear_regression = loadModel(
-                    LinearRegression(fit_intercept=linreg_fit_intercept), linreg_x_train, y_train, category_features)
+                    LinearRegression(fit_intercept=linreg_fit_intercept), linreg_x_train, y_train, category_features, list(x.columns), modelName="Linear Regression")
 
                 mae, mse, r2, plot_linear_regression = testModel(
                     linreg_x_test, y_test, pipeline_linear_regression)
@@ -450,8 +487,8 @@ if (uploaded_file):
             updateLoadState(0)
 
             with st.expander("Show Model Information"):
-                st.markdown("**MAE :** *{:.3f}*".format(mae))
                 st.markdown("**MSE :** *{:.3f}*".format(mse))
+                st.markdown("**MAE :** *{:.3f}*".format(mae))
                 st.markdown("**r2 :** *{:.3f}*".format(r2))
                 st.pyplot(plot_linear_regression)
             st.markdown(
@@ -468,10 +505,10 @@ if (uploaded_file):
 
                 if (knn_auto_n):
                     k_neighbor, k_neighbor_score = getKNN_k(
-                        knn_x_train, y_train, knn_x_test, y_test)
+                        knn_x_train, y_train, knn_x_test,  y_test, list(x.columns), category_features)
 
                 pipeline_knn = loadModel(
-                    KNeighborsRegressor(n_neighbors=k_neighbor), knn_x_train, y_train, category_features)
+                    KNeighborsRegressor(n_neighbors=k_neighbor), knn_x_train, y_train, category_features, list(x.columns), modelName="KNN")
 
                 mae, mse, r2, plot_knn = testModel(
                     knn_x_test, y_test, pipeline_knn)
@@ -484,8 +521,8 @@ if (uploaded_file):
 
             with st.expander("Show Model Information"):
                 st.markdown("**Best K :** *{}*".format(k_neighbor))
-                st.markdown("**MAE :** *{:.3f}*".format(mae))
                 st.markdown("**MSE :** *{:.3f}*".format(mse))
+                st.markdown("**MAE :** *{:.3f}*".format(mae))
                 st.markdown("**r2 :** *{:.3f}*".format(r2))
                 st.pyplot(plot_knn)
             st.markdown(
@@ -497,9 +534,11 @@ if (uploaded_file):
 
                 rf_x_train = x_train_scaled if rf_standard_scaler else x_train
                 rf_x_test = x_test_scaled if rf_standard_scaler else x_test
+                st.cache_data.clear()
+                st.cache_resource.clear()
 
                 pipeline_rf = loadModel(
-                    RandomForestRegressor(max_features=None if rf_max_feature == "None" else rf_max_feature, n_estimators=rf_n_estimator, random_state=random_state), rf_x_train, y_train, category_features)
+                    RandomForestRegressor(max_features=1 if rf_max_feature == "None" else rf_max_feature, n_estimators=rf_n_estimator, random_state=random_state), rf_x_train, y_train, category_features, list(x.columns), modelName="Random Forest")
 
                 mae, mse, r2, plot_rf = testModel(
                     rf_x_test, y_test, pipeline_rf)
@@ -511,8 +550,8 @@ if (uploaded_file):
             updateLoadState(2)
 
             with st.expander("Show Model Information"):
-                st.markdown("**MAE :** *{:.3f}*".format(mae))
                 st.markdown("**MSE :** *{:.3f}*".format(mse))
+                st.markdown("**MAE :** *{:.3f}*".format(mae))
                 st.markdown("**r2 :** *{:.3f}*".format(r2))
                 st.pyplot(plot_rf)
             st.markdown(
@@ -521,6 +560,7 @@ if (uploaded_file):
 
 def resetEverything():
     st.cache_data.clear()
+    st.cache_resource.clear()
     st.session_state.clear()
 
 

@@ -40,10 +40,10 @@ def load_shap_many():
 
     pipeline_linear_regression = getSession('pipeline_linear_regression')
     pipeline_knn = getSession('pipeline_knn')
-    pipeline_fr = getSession('pipeline_rf')
+    pipeline_rf = getSession('pipeline_rf')
 
     models_standard_scaler = getSession("models_standard_scaler")
-    pipelines = [pipeline_linear_regression, pipeline_knn, pipeline_fr]
+    pipelines = [pipeline_linear_regression, pipeline_knn, pipeline_rf]
     # End
 
     # linreg, knn, fr
@@ -51,21 +51,38 @@ def load_shap_many():
     shap_explainers = []
 
     for idx, pipeline in enumerate(pipelines):
-        x_shap = x_data if models_standard_scaler[idx] == False else x_data_scaled
+        shap_standard_scaler = models_standard_scaler[idx]
+
+        x_shap = x_data if shap_standard_scaler == False else x_data_scaled
+
         background_dataset = background_datasets[idx]
 
         explainer = shap.KernelExplainer(
             model=pipeline.predict, data=background_dataset, feature_names=x_shap.columns)
+
         shap_explainers.append(explainer)
 
-        shap_output_many.append(explainer(x_shap))
+        shap_output = explainer(x_shap)
+
+        # revert the data to its original state
+        if (shap_standard_scaler):
+            shap_output.data = x_data.values
+
+        shap_output_many.append(shap_output)
 
     return shap_explainers, shap_output_many
 
 
 @st.cache_resource(show_spinner=False)
-def load_shap_instance(_explainer, instance, tab_title):
-    return _explainer(instance)
+def load_shap_instance(_explainer, instance, tab_title, standard_scaler=False):
+    shap_output_instance = _explainer(instance)
+
+    # Convert back to original value
+    if (standard_scaler):  # means the shap output need to be converted to original value as standard scaler
+        x_data = getSession("x_data")
+        shap_output_instance.data = x_data.values
+
+    return shap_output_instance
 
 
 def load_shap_plots(_shap_output_instance, instance, tab_title, plot_name):
@@ -136,7 +153,9 @@ x_test = getSession("x_test")
 
 
 def resetEverything():
+    load_shap_many.clear()
     st.cache_data.clear()
+    st.cache_resource.clear()
     st.session_state.clear()
 
 
@@ -182,6 +201,7 @@ else:
         tab = tabs[i]
         tab_standard_scaler = models_standard_scaler[i]
         x_tab = x_data_scaled if tab_standard_scaler else x_data
+
         tab_title = tab_titles[i]
 
         with tab:
@@ -202,6 +222,7 @@ else:
                     len(x_data)))
                 st.markdown(
                     "**Mean Base Value:** *{}*".format(np.mean(shap_output_many[i].base_values)))
+
                 shap_overall_sum = pd.DataFrame(
                     {'Features': x_tab.columns, 'SHAP Value': np.sum(shap_output_many[i].values, axis=0)})
                 shap_overall_sum = shap_overall_sum
@@ -255,9 +276,8 @@ else:
                 with st.form(key="shap_stacked_force_form_tab{}".format(i)):
                     st.write("Select number of random instance to be plotted")
                     qty_stacked_force_plot = st.number_input('Number of Instance', min_value=1, max_value=len(
-                        x_tab)-1, value=len(x_tab)//10, key="qty_stacked_force_plot{}".format(i))
+                        x_tab)-1, value=len(x_tab)//10 if len(x_tab)//10 <= 100 else 100, key="qty_stacked_force_plot{}".format(i))
                     st.form_submit_button("Plot", type="primary")
-                    # TODO NEXT: TES STANDARD SCALER
             with col2:
                 stacked_force_plot = load_shap_stacked_force_plot(
                     shap_output_many[i], tab_title, x_tab, qty_stacked_force_plot)
@@ -289,7 +309,7 @@ else:
                 #     x_tab.iloc[idx_instance:idx_instance+1])
 
                 shap_output_instance = load_shap_instance(
-                    explainer_tab, instance_tab, tab_title)
+                    explainer_tab, instance_tab, tab_title, standard_scaler=tab_standard_scaler)
 
                 waterfall_plot = load_shap_plots(
                     shap_output_instance, instance_tab, tab_title, "waterfall")
@@ -298,24 +318,23 @@ else:
 
             with d_col2:
                 with st.form(key="instance_idx_form_tab{}".format(i)):
-                    col1, col2 = st.columns([1, 1])
-                    with col1:
-                        st.write("Pick an instance to be explained")
-                        st.number_input('Instance Index',
-                                        min_value=0, max_value=len(x_tab)-1, value=0, key="instance_idx_tab{}".format(i))
-                        st.form_submit_button("Plot", type="primary")
-                    with col2:
-                        idx_instance = getSession(
-                            "instance_idx_tab{}".format(i))
-                        st.write(
-                            "Instance Data of ID: ***{}***".format(getSession("instance_idx_tab"+str(i))))
-                        st.write(x_tab.iloc[idx_instance:idx_instance+1].T)
+                    st.write("Pick an instance to be explained")
+                    st.number_input('Instance Index',
+                                    min_value=0, max_value=len(x_tab)-1, value=0, key="instance_idx_tab{}".format(i))
+                    st.form_submit_button("Plot", type="primary")
+
+                idx_instance = getSession(
+                    "instance_idx_tab{}".format(i))
+                st.write(
+                    "Instance Data of ID: ***{}***".format(getSession("instance_idx_tab"+str(i))))
+
+                st.write(x_data[idx_instance:idx_instance+1])
 
             idx_instance = getSession("instance_idx_tab{}".format(i))
             idx_instance = 0 if idx_instance == False else idx_instance
 
             force_plot = load_shap_plots(
-                shap_output_instance, instance_tab, tab_title, "force")
+                shap_output_instance[0], instance_tab, tab_title, "force")
             st.pyplot(force_plot)
             plt.clf()
 
