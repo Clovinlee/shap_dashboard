@@ -5,7 +5,7 @@ import numpy as np
 
 from utils import saveSession, getSession
 from sklearn.model_selection import train_test_split
-from st_pages import show_pages_from_config, Page, show_pages
+from st_pages import Page, show_pages
 
 from sklearn.neighbors import KNeighborsRegressor
 from sklearn.linear_model import LinearRegression
