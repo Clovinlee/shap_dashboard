@@ -2,9 +2,16 @@
 path = "home.py"
 name = "Home Page"
 icon = "🏠"
-is_section=true
+is_section = false
 
 [[pages]]
 path = "pages/dashboard.py"
 name = "Dashboard"
 icon = ":bar_chart:"
+is_section = false
+
+[[pages]]
+path = "pages/dummy.py"
+name = ""
+icon = ""
+is_section = true
