@@ -1,9 +1,9 @@
 [[pages]]
-path = "/mount/src/shap_dashboard/home.py"
+path = "home.py"
 name = "Home Page"
 icon = ":bar_chart:"
 
 [[pages]]
-path = "/mount/src/shap_dashboard/pages/dashboard.py"
+path = "pages/dashboard.py"
 name = "Dashboard"
 icon = ":bar_chart:"
