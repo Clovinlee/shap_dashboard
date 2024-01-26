@@ -1,3 +1,4 @@
+ipython
 numpy
 pandas
 shap==0.43.0

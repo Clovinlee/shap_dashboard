@@ -10,7 +10,7 @@ pip install streamlit
 pip install shap
 ```
 
-## How to use
+## How to run
 Simply run this in the project folder terminal
 ```python
 streamlit run home.py
