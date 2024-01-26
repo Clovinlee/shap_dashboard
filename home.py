@@ -5,29 +5,21 @@ import numpy as np
 
 from utils import saveSession, getSession
 from sklearn.model_selection import train_test_split
-from st_pages import Page, show_pages
+from st_pages import show_pages_from_config
 
 from sklearn.neighbors import KNeighborsRegressor
 from sklearn.linear_model import LinearRegression
 from sklearn.svm import SVR
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.pipeline import Pipeline
-from sklearn.preprocessing import StandardScaler, OneHotEncoder, FunctionTransformer
+from sklearn.preprocessing import StandardScaler, OneHotEncoder
 from sklearn.compose import ColumnTransformer
-from sklearn.metrics import mean_squared_error, r2_score, mean_absolute_error, mean_absolute_percentage_error
-from itertools import permutations, combinations
+from sklearn.metrics import mean_squared_error, r2_score, mean_absolute_error
 
 import shap
 import matplotlib.pyplot as plt
 
-# show_pages_from_config()
-
-show_pages(
-    [
-        Page("home.py", "Home Page", "🏠"),
-        Page("pages/dashboard.py", "Dashboard", ":bar_chart:"),
-    ]
-)
+show_pages_from_config()
 
 st.set_option('deprecation.showPyplotGlobalUse', False)
 

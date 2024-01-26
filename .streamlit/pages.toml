@@ -1,7 +1,8 @@
 [[pages]]
 path = "home.py"
 name = "Home Page"
-icon = ":bar_chart:"
+icon = "🏠"
+is_section=true
 
 [[pages]]
 path = "pages/dashboard.py"
