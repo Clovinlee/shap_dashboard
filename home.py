@@ -30,7 +30,7 @@ st.title("Home Page")
 #     "<style>.appview-container .main .block-container{padding-left:1.5rem; padding-right:1.5rem}</style>", unsafe_allow_html=True)
 st.markdown("Welcome to the **dashboard**")
 
-st.subheader("Upload Dataset", divider="grey")
+st.subheader("Upload Dataset **:red[*]**", divider="grey")
 uploaded_file = st.file_uploader(
     "Choose a csv file", type="csv", on_change=lambda: st.session_state.clear())
 
