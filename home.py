@@ -5,7 +5,7 @@ import numpy as np
 
 from utils import saveSession, getSession
 from sklearn.model_selection import train_test_split
-from st_pages import show_pages_from_config
+from st_pages import show_pages_from_config, Page, show_pages
 
 from sklearn.neighbors import KNeighborsRegressor
 from sklearn.linear_model import LinearRegression
@@ -20,7 +20,14 @@ from itertools import permutations, combinations
 import shap
 import matplotlib.pyplot as plt
 
-show_pages_from_config()
+# show_pages_from_config()
+
+show_pages(
+    [
+        Page("home.py", "Home Page", "🏠"),
+        Page("pages/dashboard.py", "Dashboard", ":bar_chart:"),
+    ]
+)
 
 st.set_option('deprecation.showPyplotGlobalUse', False)
 
