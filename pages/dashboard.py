@@ -284,9 +284,8 @@ else:
             with col2:
                 stacked_force_plot = load_shap_stacked_force_plot(
                     shap_output_many[i], tab_title, x_tab, qty_stacked_force_plot)
-                stacked_force_plot = stacked_force_plot.replace(
-                    'background: none', 'background: red')
-                components.html(stacked_force_plot, height=400)
+                components.html(
+                    "<div style='background:white; padding:5px'>{}</div>".format(stacked_force_plot), height=400)
 
                 # st.write(load_shap_stacked_force_plot(
                 #     shap_output_many[i], tab_title, x_tab, qty=qty_stacked_force_plot))
