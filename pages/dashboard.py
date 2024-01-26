@@ -15,8 +15,8 @@ st.set_page_config(page_title="SHAP Dashboard",
 
 st.set_option('deprecation.showPyplotGlobalUse', False)
 
-st.markdown(
-    "<style>.appview-container .main .block-container{padding-left:10rem; padding-right:10rem}</style>", unsafe_allow_html=True)
+# st.markdown(
+#     "<style>.appview-container .main .block-container{padding-left:10rem; padding-right:10rem}</style>", unsafe_allow_html=True)
 
 st.title(":bar_chart: SHAP Dashboard")
 
@@ -284,6 +284,8 @@ else:
             with col2:
                 stacked_force_plot = load_shap_stacked_force_plot(
                     shap_output_many[i], tab_title, x_tab, qty_stacked_force_plot)
+                stacked_force_plot = stacked_force_plot.replace(
+                    'background: none', 'background: red')
                 components.html(stacked_force_plot, height=400)
 
                 # st.write(load_shap_stacked_force_plot(
