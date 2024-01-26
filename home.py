@@ -27,8 +27,8 @@ st.set_option('deprecation.showPyplotGlobalUse', False)
 # warnings.filterwarnings('ignore')
 
 st.title("Home Page")
-# st.markdown(
-#     "<style>div.block-container{padding-top:1rem;}</style>", unsafe_allow_html=True)
+st.markdown(
+    "<style>.appview-container .main .block-container{padding-left:1.5rem; padding-right:1.5rem}</style>", unsafe_allow_html=True)
 st.markdown("Welcome to the **dashboard**")
 
 st.subheader("Upload Dataset", divider="grey")

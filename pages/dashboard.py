@@ -15,6 +15,9 @@ st.set_page_config(page_title="SHAP Dashboard",
 
 st.set_option('deprecation.showPyplotGlobalUse', False)
 
+st.markdown(
+    "<style>.appview-container .main .block-container{padding-left:10rem; padding-right:10rem}</style>", unsafe_allow_html=True)
+
 st.title(":bar_chart: SHAP Dashboard")
 
 st.caption("**SHAP Version:**  *{}*".format(shap.__version__))
