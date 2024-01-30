@@ -267,7 +267,7 @@ else:
                 # shap.dependence_plot(ind=main_feature, interaction_index=second_feature,
                 #                      shap_values=shap_output_many[i].values, features=x_tab, feature_names=x_tab.columns, show=False)
                 st.pyplot(load_shap_dependence_plot(
-                    main_feature, second_feature, shap_output_many[i].values, x_tab))
+                    main_feature, second_feature, shap_output_many[i].values, x_data if tab_standard_scaler else x_tab))
                 plt.clf()
 
             st.subheader("SHAP Stacked Force Plot")
@@ -343,7 +343,7 @@ else:
             plt.clf()
 
             decision_plot = load_shap_plots(
-                shap_output_instance, instance_tab, tab_title, "decision")
+                shap_output_instance,  x_data[idx_instance:idx_instance+1] if tab_standard_scaler else instance_tab, tab_title, "decision")
             st.pyplot(plt.gcf())
             plt.clf()
 
