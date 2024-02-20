@@ -76,14 +76,17 @@ def load_shap_many():
     return shap_explainers, shap_output_many
 
 
-@st.cache_resource(show_spinner=False)
-def load_shap_instance(_explainer, instance, tab_title, standard_scaler=False):
-    shap_output_instance = _explainer(instance)
+# @st.cache_resource(show_spinner=False)
+def load_shap_instance(shap_output_many, instance):
+    idx_instance = instance.index[0]
+    shap_output_instance = shap_output_many[idx_instance]
 
-    # Convert back to original value
-    if (standard_scaler):  # means the shap output need to be converted to original value as standard scaler
-        x_data = getSession("x_data")
-        shap_output_instance.data = x_data.values
+    shap_output_instance.values = np.array([shap_output_instance.values])
+    shap_output_instance.base_values = np.array(
+        [shap_output_instance.base_values])
+    shap_output_instance.data = np.array([shap_output_instance.data])
+
+    # no need to convert back to standard scaler because the output has already scaled in previous function
 
     return shap_output_instance
 
@@ -313,7 +316,13 @@ else:
                 #     x_tab.iloc[idx_instance:idx_instance+1])
 
                 shap_output_instance = load_shap_instance(
-                    explainer_tab, instance_tab, tab_title, standard_scaler=tab_standard_scaler)
+                    shap_output_many[i], instance_tab)
+                # print("=====================================")
+                # print("Instance ID : {}".format(idx_instance))
+                # print("Instance Tab : {}".format(instance_tab))
+                # print("Shap output instance of tab {} : {}".format(
+                #     i, shap_output_instance))
+                # print("=====================================")
 
                 waterfall_plot = load_shap_plots(
                     shap_output_instance, instance_tab, tab_title, "waterfall")

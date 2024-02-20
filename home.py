@@ -533,6 +533,8 @@ if (uploaded_file):
 
                 rf_x_train = x_train_scaled if rf_standard_scaler else x_train
                 rf_x_test = x_test_scaled if rf_standard_scaler else x_test
+
+                # do below to rerun the model again when prompted
                 st.cache_data.clear()
                 st.cache_resource.clear()
 
